@@ -11,8 +11,7 @@ from typing import List, Dict
 
 # Constants
 INITIAL_GREETING = """안녕하세요. 저는 연구 도우미 Gemini 입니다. 
-어떤 연구 주제에 대해 논의해 보고 싶으신가요? 
-혹시 현재 진행 중인 연구가 있거나, 새로운 연구 아이디어를 탐색하고 싶으신지 알려주시면, 제가 가진 전문 지식을 활용하여 지원해 드릴 수 있도록 하겠습니다. 구체적인 질문이나 아이디어를 제시해 주시면 더욱 구체적인 도움을 드릴 수 있습니다."""
+먼저 간단한 정보를 입력해 주시면, 더 나은 연구 지원을 제공해 드릴 수 있습니다."""
 
 SYSTEM_PROMPT = """당신은 신경과학과 의학 분야의 전문 연구 동료입니다.
 당신의 역할은 다음과 같습니다:
@@ -48,14 +47,49 @@ def initialize_page():
     - 학술 작문 지원
     """)
 
+# User Information Management
+def initialize_user_info():
+    """사용자 정보 초기화"""
+    if "user_info" not in st.session_state:
+        st.session_state.user_info = {
+            "name": None,
+            "field": None,
+            "is_initialized": False
+        }
+
+def get_user_info():
+    """사용자 정보 입력 받기"""
+    if not st.session_state.user_info["is_initialized"]:
+        with st.form("user_info_form"):
+            st.subheader("👤 연구자 정보")
+            name = st.text_input("이름을 입력해주세요")
+            field = st.text_input("주요 연구 분야를 입력해주세요 (예: 신경과학, 의학, 생명공학 등)")
+            submitted = st.form_submit_button("시작하기")
+            
+            if submitted and name and field:
+                st.session_state.user_info["name"] = name
+                st.session_state.user_info["field"] = field
+                st.session_state.user_info["is_initialized"] = True
+                st.rerun()
+        return False
+    return True
+
 # Chat History Management
 def initialize_chat_history():
     """채팅 기록 초기화"""
     if "messages" not in st.session_state:
         st.session_state.messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "assistant", "content": INITIAL_GREETING}
+            {"role": "system", "content": SYSTEM_PROMPT}
         ]
+        if st.session_state.user_info["is_initialized"]:
+            welcome_message = f"""안녕하세요, {st.session_state.user_info['name']}님. 
+저는 연구 도우미 Gemini 입니다. {st.session_state.user_info['field']} 분야의 연구를 지원해 드리겠습니다.
+
+어떤 연구 주제에 대해 논의해 보고 싶으신가요? 
+혹시 현재 진행 중인 연구가 있거나, 새로운 연구 아이디어를 탐색하고 싶으신지 알려주시면, 
+제가 가진 전문 지식을 활용하여 지원해 드릴 수 있도록 하겠습니다. 
+구체적인 질문이나 아이디어를 제시해 주시면 더욱 구체적인 도움을 드릴 수 있습니다."""
+            st.session_state.messages.append({"role": "assistant", "content": welcome_message})
 
 def display_chat_history():
     """채팅 기록 표시"""
@@ -86,6 +120,12 @@ def main():
     """메인 애플리케이션 함수"""
     # 컴포넌트 초기화
     initialize_page()
+    initialize_user_info()
+    
+    # 사용자 정보 입력 확인
+    if not get_user_info():
+        return
+    
     initialize_chat_history()
     model = initialize_gemini()
     
